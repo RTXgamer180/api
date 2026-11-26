@@ -1,57 +1,103 @@
-
-name: JJ Bot Control - Launch Website
+name: JJ Bot Control - Install and Deploy
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - "**/JJ_Bot_Control.zip"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: true
+  group: jj-bot-control-install
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  install-and-deploy:
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Find website
-        id: site
+      - name: Find and extract project ZIP
+        id: install
+        shell: bash
         run: |
-          SITE=$(find . -type f \
-            -path "*/public/index.html" \
-            -print -quit)
+          set -euo pipefail
 
-          if [ -z "$SITE" ]; then
-            echo "Website not found!"
+          ZIP=$(find . -type f -name "JJ_Bot_Control.zip" \
+            -not -path "./.git/*" -print -quit)
+
+          if [ -z "$ZIP" ]; then
+            echo "JJ_Bot_Control.zip was not found."
             exit 1
           fi
 
-          DIR=$(dirname "$SITE")
-          echo "path=$DIR" >> "$GITHUB_OUTPUT"
+          TARGET=$(dirname "$ZIP")
+          echo "Found: $ZIP"
+          echo "Installing into: $TARGET"
 
-          echo "Website found: $DIR"
+          TEMP=$(mktemp -d)
+          unzip -q "$ZIP" -d "$TEMP"
 
-      - name: Configure Pages
+          # Copy project contents beside the uploaded ZIP.
+          cp -a "$TEMP"/. "$TARGET"/
+          rm -rf "$TEMP"
+
+          # Register launch.yml at the repository-root workflow directory.
+          if [ -f "$TARGET/.github/workflows/launch.yml" ]; then
+            mkdir -p .github/workflows
+            cp "$TARGET/.github/workflows/launch.yml" .github/workflows/launch.yml
+          elif [ -f ".github/workflows/launch.yml" ]; then
+            echo "Root launch.yml already exists."
+          else
+            echo "launch.yml template not found in extracted project."
+            exit 1
+          fi
+
+          mv "$ZIP" "$(dirname "$ZIP")/JJ_Bot_Control_installed.zip"
+
+          SITE=$(find "$TARGET" -type f -path "*/public/index.html" -print -quit)
+          if [ -z "$SITE" ]; then
+            echo "No public/index.html found in extracted project."
+            exit 1
+          fi
+
+          echo "site_dir=$(dirname "$SITE")" >> "$GITHUB_OUTPUT"
+          echo "Installed project and prepared Pages site."
+
+      - name: Commit installed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Install JJ Bot Control project"
+            git push
+          fi
+
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
       - name: Upload website
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ${{ steps.site.outputs.path }}
+          path: ${{ steps.install.outputs.site_dir }}
 
       - name: Deploy website
         id: deployment
