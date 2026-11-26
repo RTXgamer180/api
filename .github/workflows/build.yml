@@ -1,5 +1,5 @@
 
-name: JJ Bot Control - Master Installer
+name: Install JJ Bot Control Project
 
 on:
   push:
@@ -33,8 +33,7 @@ jobs:
           token: ${{ secrets.BOT_CONTROL_TOKEN }}
           fetch-depth: 0
 
-      - name: Find and install project
-        id: install
+      - name: Install project if ZIP exists
         shell: bash
         run: |
           set -euo pipefail
@@ -42,54 +41,52 @@ jobs:
           ZIP_PATH=$(find . -type f \
             -name 'JJ_Bot_Control.zip' \
             -not -path './.git/*' \
-            -print -quit)
+            -print -quit || true)
 
-          if [ -z "$ZIP_PATH" ]; then
-            echo "ZIP not found!"
-            exit 1
-          fi
+          if [ -n "$ZIP_PATH" ]; then
+            TARGET=$(dirname "$ZIP_PATH")
+            TEMP=$(mktemp -d)
 
-          TARGET=$(dirname "$ZIP_PATH")
-          TEMP=$(mktemp -d)
+            echo "Installing: $ZIP_PATH"
 
-          echo "Found: $ZIP_PATH"
-          echo "Target: $TARGET"
+            unzip -q "$ZIP_PATH" -d "$TEMP"
+            cp -a "$TEMP"/. "$TARGET"/
 
-          unzip -q "$ZIP_PATH" -d "$TEMP"
+            mkdir -p .github/workflows
 
-          cp -a "$TEMP"/. "$TARGET"/
+            SOURCE="$TARGET/.github/workflows/launch.yml"
+            DEST="./.github/workflows/launch.yml"
 
-          mkdir -p .github/workflows
-
-          SOURCE="$TARGET/.github/workflows/launch.yml"
-          DEST="./.github/workflows/launch.yml"
-
-          if [ -f "$SOURCE" ]; then
-            if [ "$(realpath "$SOURCE")" != "$(realpath "$DEST")" ]; then
-              cp -f "$SOURCE" "$DEST"
+            if [ -f "$SOURCE" ]; then
+              if [ "$(realpath "$SOURCE")" != "$(realpath "$DEST")" ]; then
+                cp -f "$SOURCE" "$DEST"
+              fi
             else
-              echo "launch.yml is already in the correct location."
+              echo "launch.yml not found in project ZIP!"
+              exit 1
             fi
+
+            mv "$ZIP_PATH" \
+              "$(dirname "$ZIP_PATH")/JJ_Bot_Control_installed.zip"
+
+            rm -rf "$TEMP"
+            echo "Project installed!"
           else
-            echo "launch.yml not found!"
-            exit 1
+            echo "No installation ZIP found. Checking existing installation..."
           fi
 
-          INSTALLED="$(dirname "$ZIP_PATH")/JJ_Bot_Control_installed.zip"
-          mv "$ZIP_PATH" "$INSTALLED"
-
-          rm -rf "$TEMP"
-
-          SITE=$(find "$TARGET" -type f \
+          SITE=$(find . -type f \
             -path '*/public/index.html' \
+            -not -path './.git/*' \
             -print -quit)
 
           if [ -z "$SITE" ]; then
-            echo "Website not found!"
+            echo "No installed website or project ZIP found!"
             exit 1
           fi
 
-          echo "site_dir=$(dirname "$SITE")" >> "$GITHUB_OUTPUT"
+          echo "Website found: $SITE"
+          echo "site_dir=$(dirname "$SITE")" >> "$GITHUB_ENV"
 
       - name: Commit installed project
         run: |
@@ -102,16 +99,16 @@ jobs:
             git commit -m "Install JJ Bot Control project"
             git push origin HEAD:main
           else
-            echo "Nothing to commit."
+            echo "No installation changes to commit."
           fi
 
-      - name: Configure Pages
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload website
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ${{ steps.install.outputs.site_dir }}
+          path: ${{ env.site_dir }}
 
       - name: Deploy website
         id: deployment
