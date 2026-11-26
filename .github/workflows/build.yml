@@ -3,8 +3,7 @@ name: JJ Bot Control - Master Installer
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - '**/JJ_Bot_Control.zip'
       - '.github/workflows/build.yml'
@@ -23,6 +22,10 @@ jobs:
   install-and-deploy:
     runs-on: ubuntu-latest
 
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,24 +33,27 @@ jobs:
           token: ${{ secrets.BOT_CONTROL_TOKEN }}
           fetch-depth: 0
 
-      - name: Find and install JJ Bot Control
+      - name: Find and install project
         id: install
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_PATH="$(find . -type f -name 'JJ_Bot_Control.zip' \
-            -not -path './.git/*' -print -quit)"
+          ZIP_PATH=$(find . -type f \
+            -name 'JJ_Bot_Control.zip' \
+            -not -path './.git/*' \
+            -print -quit)
 
           if [ -z "$ZIP_PATH" ]; then
-            echo "No JJ_Bot_Control.zip found."
+            echo "ZIP not found!"
             exit 1
           fi
 
-          echo "Found: $ZIP_PATH"
+          TARGET=$(dirname "$ZIP_PATH")
+          TEMP=$(mktemp -d)
 
-          TARGET="$(dirname "$ZIP_PATH")"
-          TEMP="$(mktemp -d)"
+          echo "Found: $ZIP_PATH"
+          echo "Target: $TARGET"
 
           unzip -q "$ZIP_PATH" -d "$TEMP"
 
@@ -56,60 +62,57 @@ jobs:
           mkdir -p .github/workflows
 
           SOURCE="$TARGET/.github/workflows/launch.yml"
-          DEST=".github/workflows/launch.yml"
+          DEST="./.github/workflows/launch.yml"
 
           if [ -f "$SOURCE" ]; then
-            if [ "$SOURCE" != "$DEST" ]; then
-              cp "$SOURCE" "$DEST"
+            if [ "$(realpath "$SOURCE")" != "$(realpath "$DEST")" ]; then
+              cp -f "$SOURCE" "$DEST"
+            else
+              echo "launch.yml is already in the correct location."
             fi
-            echo "Installed launch.yml into root workflows."
           else
-            echo "WARNING: No launch.yml found in project."
-          fi
-
-          if [ "$ZIP_PATH" = "./JJ_Bot_Control.zip" ]; then
-            mv "$ZIP_PATH" "./JJ_Bot_Control.installed.zip"
-          else
-            mv "$ZIP_PATH" "$TARGET/JJ_Bot_Control.installed.zip"
-          fi
-
-          rm -rf "$TEMP"
-
-          SITE_DIR="$(find "$TARGET" -type f -path '*/public/index.html' \
-            -print -quit | xargs -r dirname)"
-
-          if [ -z "$SITE_DIR" ]; then
-            echo "Could not find public/index.html."
+            echo "launch.yml not found!"
             exit 1
           fi
 
-          echo "site_dir=$SITE_DIR" >> "$GITHUB_OUTPUT"
-          echo "Website directory: $SITE_DIR"
+          INSTALLED="$(dirname "$ZIP_PATH")/JJ_Bot_Control_installed.zip"
+          mv "$ZIP_PATH" "$INSTALLED"
+
+          rm -rf "$TEMP"
+
+          SITE=$(find "$TARGET" -type f \
+            -path '*/public/index.html' \
+            -print -quit)
+
+          if [ -z "$SITE" ]; then
+            echo "Website not found!"
+            exit 1
+          fi
+
+          echo "site_dir=$(dirname "$SITE")" >> "$GITHUB_OUTPUT"
 
       - name: Commit installed project
-        shell: bash
         run: |
-          set -euo pipefail
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add -A
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
+          if ! git diff --cached --quiet; then
             git commit -m "Install JJ Bot Control project"
             git push origin HEAD:main
+          else
+            echo "Nothing to commit."
           fi
 
-      - name: Configure GitHub Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
 
       - name: Upload website
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ${{ steps.install.outputs.site_dir }}
 
       - name: Deploy website
+        id: deployment
         uses: actions/deploy-pages@v4
