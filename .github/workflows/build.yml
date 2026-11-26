@@ -1,52 +1,58 @@
 
-name: Install JJ Bot Control
+name: JJ Bot Control - Launch Website
 
 on:
-  push:
-    paths:
-      - "**/JJ_Bot_Control.zip"
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
 
 jobs:
-  install:
+  deploy:
     runs-on: ubuntu-latest
 
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Find website
+        id: site
+        run: |
+          SITE=$(find . -type f \
+            -path "*/public/index.html" \
+            -print -quit)
+
+          if [ -z "$SITE" ]; then
+            echo "Website not found!"
+            exit 1
+          fi
+
+          DIR=$(dirname "$SITE")
+          echo "path=$DIR" >> "$GITHUB_OUTPUT"
+
+          echo "Website found: $DIR"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
         with:
-          fetch-depth: 0
+          path: ${{ steps.site.outputs.path }}
 
-      - name: Find workflow directory
-        id: paths
-        run: |
-          FILE=$(find . -path "*/.github/workflows/build.yml" -print -quit)
-          DIR=$(dirname "$(dirname "$(dirname "$FILE")")")
-          echo "project_dir=$DIR" >> "$GITHUB_OUTPUT"
-          echo "Found project directory: $DIR"
-
-      - name: Extract ZIP
-        run: |
-          DIR="${{ steps.paths.outputs.project_dir }}"
-          cd "$DIR"
-          mkdir -p extracted
-          unzip -o JJ_Bot_Control.zip -d extracted
-          cp -a extracted/. .
-          rm -rf extracted
-
-      - name: Rename ZIP
-        run: |
-          DIR="${{ steps.paths.outputs.project_dir }}"
-          cd "$DIR"
-          mv JJ_Bot_Control.zip JJ_Bot_Control_installed.zip
-
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Install JJ Bot Control" || exit 0
-          git push
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
