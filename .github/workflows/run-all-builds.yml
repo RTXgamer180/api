@@ -1,0 +1,51 @@
+
+name: Run All Nested Build Workflows
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  discover-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find nested build.yml files
+        id: discover
+        run: |
+          find . -mindepth 4 \
+            -path "*/.github/workflows/build.yml" \
+            -type f \
+            ! -path "./.github/*" \
+            > build-files.txt
+
+          echo "Found workflows:"
+          cat build-files.txt
+
+      - name: Trigger nested workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          while IFS= read -r FILE; do
+            [ -z "$FILE" ] && continue
+
+            DIR=$(dirname "$(dirname "$(dirname "$FILE")")")
+            echo "Triggering workflow in: $DIR"
+
+            gh workflow run build.yml \
+              --repo "$REPO" \
+              --ref "${GITHUB_REF_NAME}" \
+              --field project_dir="$DIR" \
+              || echo "Could not trigger $FILE"
+
+          done < build-files.txt
