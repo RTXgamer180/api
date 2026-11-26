@@ -12,62 +12,41 @@
     <div class="brand"><span class="brand-mark">JJ</span><div><b>JJ Bot Control</b><small>MINECRAFT BOT DASHBOARD</small></div></div>
     <div id="connection" class="pill offline">● Backend offline</div>
   </header>
-
   <main>
     <section class="hero">
-      <div>
-        <p class="eyebrow">PRIVATE SERVER TOOLKIT</p>
-        <h1>Your bots.<br><span>Your test server.</span></h1>
-        <p class="muted">Create and control temporary Minecraft test bots from one dashboard.</p>
-      </div>
+      <div><p class="eyebrow">PRIVATE SERVER TOOLKIT</p><h1>Your bots.<br><span>Your test server.</span></h1><p class="muted">Create and control temporary Minecraft test bots from one dashboard.</p></div>
       <div class="hero-icon">⬡</div>
     </section>
-
-    <section class="notice">
-      <b>Permission required</b>
-      <p>Only connect to servers you own or have explicit permission to test. This starter uses an exact server allowlist and does not support attacking players or bypassing authentication.</p>
-    </section>
-
+    <section class="notice"><b>Permission required</b><p>Only connect to servers you own or have explicit permission to test. This starter uses an exact server allowlist and does not support attacking players or bypassing authentication.</p></section>
     <section class="panel">
       <div class="section-head"><div><p class="eyebrow">NEW SESSION</p><h2>Create a bot</h2></div><span class="tag">TEMPORARY</span></div>
       <form id="create-form">
-        <label>Allowed server address
-          <input id="server" placeholder="127.0.0.1:25565" autocomplete="off" required>
-        </label>
+        <label>Allowed server address<input id="server" placeholder="127.0.0.1:25565" autocomplete="off" required></label>
         <div class="two">
-          <label>Username
-            <div class="input-action"><input id="username" placeholder="Auto-generated"><button type="button" id="randomize" class="secondary">Randomize</button></div>
-          </label>
-          <label>Authentication
-            <select id="auth"><option value="offline">Offline-mode (private test server)</option><option value="microsoft" disabled>Microsoft (not enabled in this starter)</option></select>
-          </label>
+          <label>Username<div class="input-action"><input id="username" placeholder="Auto-generated"><button type="button" id="randomize" class="secondary">Randomize</button></div></label>
+          <label>Authentication<select id="auth"><option value="offline">Offline-mode (private test server)</option><option value="microsoft" disabled>Microsoft (not enabled yet)</option></select></label>
         </div>
         <button class="primary" type="submit">＋ Create bot</button>
-        <p class="small muted">Microsoft authentication is intentionally disabled until secure per-user sign-in is implemented.</p>
+        <p class="small muted">This release supports Java offline-mode private test servers only.</p>
       </form>
     </section>
-
     <section class="panel">
       <div class="section-head"><div><p class="eyebrow">LIVE SESSIONS</p><h2>Your bots <span id="bot-count" class="count">0</span></h2></div></div>
       <div id="empty" class="empty"><div class="empty-icon">◇</div><b>No active bots</b><p class="muted">Create a bot connected to your permitted test server.</p></div>
       <div id="bots" class="bots"></div>
     </section>
-
     <footer><b>JJ Bot Control</b><p>Use only on servers you own or are authorized to test. Bot sessions are temporary and are cleaned up when the dashboard disconnects.</p></footer>
   </main>
-
   <template id="bot-template">
     <article class="bot-card">
       <div class="bot-top"><div class="avatar">J</div><div class="bot-meta"><b class="bot-name"></b><small class="bot-server"></small></div><span class="status">CONNECTING</span></div>
       <div class="stats"><div><small>POSITION</small><b class="position">—</b></div><div><small>HEALTH</small><b class="health">—</b></div><div><small>FOOD</small><b class="food">—</b></div></div>
       <div class="controls"><button data-action="forward">↑ Walk</button><button data-action="left">← Left</button><button data-action="right">Right →</button><button data-action="jump">Jump</button><button data-action="stop">Stop</button></div>
       <form class="chat-form"><input class="chat-input" maxlength="160" placeholder="Message your bot..."><button class="secondary">Send</button></form>
-      <div class="log"></div>
-      <button class="danger disconnect">Disconnect bot</button>
+      <div class="log"></div><button class="danger disconnect">Disconnect bot</button>
     </article>
   </template>
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <script src="./config.js"></script>
-  <script src="./app.js"></script>
+  <script src="./config.js"></script><script src="./app.js"></script>
 </body>
 </html>

@@ -1,76 +1,48 @@
 # JJ Bot Control
 
-A starter project for a **private, permission-based Minecraft bot dashboard**.
+A starter dashboard for temporary Minecraft test bots on private servers you own or are explicitly authorized to test.
 
-## Included in this starter
-- GitHub Pages frontend (`public/`)
-- Node.js + Express + Socket.IO backend (`server/`)
-- Mineflayer bot engine
-- Random bot usernames
-- Chat, walk, jump, stop, status and disconnect controls
-- Session cleanup when a dashboard disconnects
-- Exact server allowlist, per-session bot limit and rate limits
-- Offline-mode support for private test servers you own
+## Important architecture
+- GitHub Pages hosts the static website only.
+- The Node.js bot backend must run separately on a machine or hosting service that supports long-running Node.js processes.
+- This starter currently supports **Minecraft Java Edition, offline-mode private test servers only**.
+- Bedrock support and Microsoft account authentication are not implemented. They require separate protocol support and a secure per-user Microsoft sign-in flow.
+- No combat/attack automation is included.
 
-## Important compatibility note
-GitHub Pages only hosts static files. The Node.js backend must run separately on a machine/server you control.
+## Install through GitHub Actions
 
-This starter intentionally does **not** connect to arbitrary public servers, bypass authentication, or automate attacking players. It is designed for private servers you own or have explicit permission to test.
+1. Put `build.yml` at the repository root in `.github/workflows/build.yml`.
+2. Upload `JJ_Bot_Control.zip` anywhere inside the repository (a nested project folder is fine).
+3. Push to the `main` branch.
+4. The installer finds the ZIP, extracts the project beside it, renames the ZIP to `JJ_Bot_Control_installed.zip`, installs `launch.yml` at the repository root, and deploys the website.
+5. In repository Settings → Pages, set Source to **GitHub Actions**.
 
-### Authentication
-- `offline` mode is supported for your own private offline-mode test server.
-- `microsoft` mode is reserved in the UI but disabled in this starter. A proper per-user Microsoft OAuth/device-code flow must be added before enabling it. Do not collect Microsoft passwords or share one Microsoft session between users.
+The installer workflow must be committed to the repository before uploading the project ZIP. GitHub only discovers workflows from the repository-root `.github/workflows/` directory.
 
-## 1. Requirements
-- Node.js 20+
-- A private Minecraft Java server you own, configured for offline mode if using the offline test option
-- A host for the backend that can keep Node.js running
+## Backend setup
 
-## 2. Install
+Use Node.js 20+ on a separate host or your own computer.
+
 ```bash
 cd server
 npm install
 cp .env.example .env
 ```
 
-Edit `server/.env`:
-```env
-PORT=3000
-PUBLIC_ORIGIN=http://localhost:8080
-ALLOWED_SERVERS=127.0.0.1:25565
-MAX_BOTS_PER_SESSION=1
-BOT_CONNECT_TIMEOUT_MS=20000
-```
+Edit `.env` and set:
+- `PORT=3000`
+- `PUBLIC_ORIGIN` to your website origin
+- `ALLOWED_SERVERS` to exact `host:port` values for private servers you control
 
-`ALLOWED_SERVERS` is a comma-separated list of exact `host:port` entries. Add only private servers you own or are explicitly authorized to test.
+Then run:
 
-## 3. Run locally
-Terminal 1:
 ```bash
-cd server
 npm start
 ```
 
-Terminal 2 (serve the static frontend):
-```bash
-npx serve public -l 8080
-```
-Open `http://localhost:8080`.
+Set `public/config.js` `API_BASE` to your backend HTTPS URL before deploying the site.
 
-For local testing, the frontend and backend must be on the same computer. Set `PUBLIC_ORIGIN` to the frontend origin.
+## Safety and limitations
+The backend enforces an exact server allowlist and a low bot limit. Use only servers you own or have explicit permission to test. Do not use the software to spam, grief, disrupt, exploit, or attack other servers or players.
 
-## 4. Deploy the website to GitHub Pages
-1. Create a GitHub repository named `JJ-Bot-Control`.
-2. Upload the contents of this project.
-3. In GitHub, open **Settings → Pages**.
-4. Choose **Deploy from a branch**, select `main` and `/public` (or move the contents of `public/` to the root if your Pages setup does not offer a folder selector).
-5. Update `public/config.js` so `API_BASE` is your backend HTTPS URL.
-6. Set the backend `PUBLIC_ORIGIN` to your GitHub Pages origin, for example `https://YOURNAME.github.io`.
-
-Do not expose the backend without HTTPS, authentication, and a restrictive server allowlist. This starter is intended for a trusted private test deployment, not an unrestricted public bot service.
-
-## 5. Minecraft version
-Mineflayer protocol support depends on its current release. If your server version is not supported, update Mineflayer and its dependencies after checking their compatibility.
-
-## Disclaimer
-Use JJ Bot Control only on Minecraft servers you own or have explicit permission to test. Do not use it to spam, grief, disrupt, exploit, or attack other players or servers. You are responsible for complying with server rules and applicable laws.
+This is a starter, not a publicly safe multi-user service. Before making it public, add real user authentication, abuse prevention, backend HTTPS, per-user authorization, monitoring, and secure secret management. Do not expose an unauthenticated bot-control backend to the internet.
