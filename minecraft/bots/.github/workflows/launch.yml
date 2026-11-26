@@ -1,0 +1,47 @@
+name: JJ Bot Control - Deploy Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find website
+        id: site
+        run: |
+          SITE=$(find . -type f -path "*/public/index.html" -not -path "./.git/*" -print -quit)
+          if [ -z "$SITE" ]; then
+            echo "No public/index.html found."
+            exit 1
+          fi
+          echo "path=$(dirname "$SITE")" >> "$GITHUB_OUTPUT"
+          echo "Found $SITE"
+
+      - uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ steps.site.outputs.path }}
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
